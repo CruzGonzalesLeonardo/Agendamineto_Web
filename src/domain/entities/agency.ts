@@ -1,0 +1,1 @@
+export type Agency = { id: string; name: string; address: string; city: string; active: boolean };

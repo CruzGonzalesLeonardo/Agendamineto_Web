@@ -1,0 +1,1 @@
+export type Procedure = { id: string; name: string; description: string; durationMinutes: number; active: boolean };

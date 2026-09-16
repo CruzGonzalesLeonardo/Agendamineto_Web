@@ -1,0 +1,5 @@
+import Link from "next/link";
+
+export default function SchedulePage() {
+  return <main className="min-h-screen bg-slate-50 px-6 py-16 text-slate-950"><section className="mx-auto max-w-3xl"><Link className="text-sm font-semibold text-teal-700" href="/">Volver al inicio</Link><h1 className="mt-8 text-4xl font-bold tracking-tight">Comienza tu agendamiento</h1><p className="mt-4 text-slate-600">Esta pantalla será el primer flujo de orientación. Los casos de uso y repositorios ya están separados para conectar el formulario con Supabase.</p><div className="mt-10 border border-slate-200 bg-white p-6 shadow-sm"><p className="font-semibold">Próximo paso</p><p className="mt-2 text-slate-600">Implementar el selector de trámite, agencia, fecha y hora con validación de disponibilidad.</p></div></section></main>;
+}
