@@ -17,9 +17,7 @@ export class SupabaseProcedureRepository {
       throw error;
     }
 
-    if (!data) return [];
-
-    return data.map((item) => ({
+    return (data as any[]).map((item) => ({
       id_tramite: item.id_tramite,
       nombre_tramite: item.nombre_tramite,
       descripcion: item.descripcion,
