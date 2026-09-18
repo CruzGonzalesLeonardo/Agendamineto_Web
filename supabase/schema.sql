@@ -1,155 +1,134 @@
 -- =========================================================================
--- SISTEMA DE AGENDAMIENTO Y ORIENTACIÓN - BANCO DE LA NACIÓN
--- MOTOR: PostgreSQL (Supabase)
--- MODO PRUEBAS / DESARROLLO: ACCESO PÚBLICO TOTAL SIN RESTRICCIONES RLS
+-- ESQUEMA OFICIAL REMOTO - SUPABASE (PROYECTO BANCO DE LA NACIÓN)
+-- Sincronizado directamente desde la instancia remota de Supabase
 -- =========================================================================
 
--- 1. CONTROL DE ACCESOS Y ROLES (RBAC)
-CREATE TABLE IF NOT EXISTS rol (
-    id_rol SERIAL PRIMARY KEY,
-    nombre_rol VARCHAR(30) NOT NULL UNIQUE
+-- ENUM DE ROLES DE USUARIO
+DO $$ BEGIN
+    CREATE TYPE public.user_role AS ENUM ('CLIENTE', 'AGENTE', 'ADMIN_AGENCIA', 'ADMIN_GENERAL');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+-- 1. AGENCIA
+CREATE TABLE IF NOT EXISTS public.agencia (
+  id_agencia SERIAL PRIMARY KEY,
+  nombre_agencia character varying NOT NULL,
+  direccion character varying NOT NULL,
+  distrito character varying NOT NULL,
+  telefono character varying,
+  latitud numeric,
+  longitud numeric,
+  activa boolean DEFAULT true
 );
 
-INSERT INTO rol (id_rol, nombre_rol) VALUES 
-(1, 'Cliente'),
-(2, 'Agente Ventanilla'),
-(3, 'Administrador Agencia'),
-(4, 'Administrador General')
-ON CONFLICT (id_rol) DO NOTHING;
-
-CREATE TABLE IF NOT EXISTS permiso (
-    id_permiso SERIAL PRIMARY KEY,
-    codigo_permiso VARCHAR(50) NOT NULL UNIQUE,
-    descripcion TEXT
-);
-
-CREATE TABLE IF NOT EXISTS rol_permiso (
-    id_rol INT REFERENCES rol(id_rol) ON DELETE CASCADE,
-    id_permiso INT REFERENCES permiso(id_permiso) ON DELETE CASCADE,
-    PRIMARY KEY (id_rol, id_permiso)
-);
-
--- 2. AGENCIAS Y VENTANILLAS
-CREATE TABLE IF NOT EXISTS agencia (
-    id_agencia SERIAL PRIMARY KEY,
-    nombre_agencia VARCHAR(100) NOT NULL,
-    direccion VARCHAR(200) NOT NULL,
-    distrito VARCHAR(100) NOT NULL,
-    telefono VARCHAR(15),
-    latitud NUMERIC(10, 8),
-    longitud NUMERIC(11, 8),
-    activa BOOLEAN DEFAULT true
-);
-
-CREATE TABLE IF NOT EXISTS ventanilla (
-    id_ventanilla SERIAL PRIMARY KEY,
-    id_agencia INT NOT NULL REFERENCES agencia(id_agencia) ON DELETE CASCADE,
-    numero_ventanilla VARCHAR(10) NOT NULL,
-    activa BOOLEAN DEFAULT true,
-    CONSTRAINT uq_agencia_ventanilla UNIQUE (id_agencia, numero_ventanilla)
+-- 2. VENTANILLA
+CREATE TABLE IF NOT EXISTS public.ventanilla (
+  id_ventanilla SERIAL PRIMARY KEY,
+  id_agencia integer NOT NULL REFERENCES public.agencia(id_agencia) ON DELETE CASCADE,
+  numero_ventanilla character varying NOT NULL,
+  activa boolean DEFAULT true
 );
 
 -- 3. PERFIL DE USUARIO
-CREATE TABLE IF NOT EXISTS perfil_usuario (
-    id_usuario UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dni VARCHAR(15) NOT NULL UNIQUE,
-    nombre_completo VARCHAR(200),
-    nombres VARCHAR(100),
-    apellidos VARCHAR(100),
-    correo VARCHAR(150) NOT NULL UNIQUE,
-    telefono VARCHAR(15),
-    rol VARCHAR(30) DEFAULT 'CLIENTE',
-    id_rol INT REFERENCES rol(id_rol) DEFAULT 1,
-    id_agencia INT REFERENCES agencia(id_agencia) ON DELETE SET NULL,
-    contrasenia TEXT
+CREATE TABLE IF NOT EXISTS public.perfil_usuario (
+  id_usuario uuid PRIMARY KEY,
+  dni character varying UNIQUE,
+  nombre_completo character varying NOT NULL,
+  correo character varying NOT NULL UNIQUE,
+  telefono character varying,
+  rol user_role NOT NULL DEFAULT 'CLIENTE'::user_role,
+  id_agencia integer REFERENCES public.agencia(id_agencia),
+  created_at timestamp with time zone DEFAULT now(),
+  contrasenia text
 );
 
-CREATE TABLE IF NOT EXISTS personal_ventanilla (
-    id_asignacion SERIAL PRIMARY KEY,
-    id_usuario UUID NOT NULL REFERENCES perfil_usuario(id_usuario) ON DELETE CASCADE,
-    id_ventanilla INT NOT NULL REFERENCES ventanilla(id_ventanilla) ON DELETE CASCADE,
-    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
-    activa BOOLEAN DEFAULT true
+-- 4. ASIGNACIÓN DE PERSONAL A VENTANILLA
+CREATE TABLE IF NOT EXISTS public.personal_ventanilla (
+  id_asignacion SERIAL PRIMARY KEY,
+  id_usuario uuid NOT NULL REFERENCES public.perfil_usuario(id_usuario) ON DELETE CASCADE,
+  id_ventanilla integer NOT NULL REFERENCES public.ventanilla(id_ventanilla) ON DELETE CASCADE,
+  fecha date NOT NULL DEFAULT CURRENT_DATE,
+  activa boolean DEFAULT true
 );
 
--- 4. TRÁMITES Y REQUISITOS DINÁMICOS
-CREATE TABLE IF NOT EXISTS tramite (
-    id_tramite SERIAL PRIMARY KEY,
-    nombre_tramite VARCHAR(100) NOT NULL,
-    descripcion TEXT,
-    duracion_minutos SMALLINT NOT NULL CHECK (duracion_minutos > 0),
-    activo BOOLEAN DEFAULT true
+-- 5. TRÁMITES
+CREATE TABLE IF NOT EXISTS public.tramite (
+  id_tramite SERIAL PRIMARY KEY,
+  nombre_tramite character varying NOT NULL,
+  descripcion text,
+  duracion_minutos smallint NOT NULL CHECK (duracion_minutos > 0),
+  activo boolean DEFAULT true
 );
 
-CREATE TABLE IF NOT EXISTS agencia_tramite (
-    id_agencia INT REFERENCES agencia(id_agencia) ON DELETE CASCADE,
-    id_tramite INT REFERENCES tramite(id_tramite) ON DELETE CASCADE,
-    PRIMARY KEY (id_agencia, id_tramite)
+-- 6. ASOCIACIÓN AGENCIA - TRÁMITE
+CREATE TABLE IF NOT EXISTS public.agencia_tramite (
+  id_agencia integer NOT NULL REFERENCES public.agencia(id_agencia) ON DELETE CASCADE,
+  id_tramite integer NOT NULL REFERENCES public.tramite(id_tramite) ON DELETE CASCADE,
+  PRIMARY KEY (id_agencia, id_tramite)
 );
 
-CREATE TABLE IF NOT EXISTS requisito_tramite (
-    id_requisito SERIAL PRIMARY KEY,
-    id_tramite INT NOT NULL REFERENCES tramite(id_tramite) ON DELETE CASCADE,
-    descripcion_requisito TEXT NOT NULL,
-    es_obligatorio BOOLEAN DEFAULT true
+-- 7. REQUISITOS DEL TRÁMITE
+CREATE TABLE IF NOT EXISTS public.requisito_tramite (
+  id_requisito SERIAL PRIMARY KEY,
+  id_tramite integer NOT NULL REFERENCES public.tramite(id_tramite) ON DELETE CASCADE,
+  descripcion_requisito text NOT NULL,
+  es_obligatorio boolean DEFAULT true
 );
 
--- 5. HORARIOS Y CITAS
-CREATE TABLE IF NOT EXISTS horario_disponible (
-    id_horario SERIAL PRIMARY KEY,
-    id_ventanilla INT NOT NULL REFERENCES ventanilla(id_ventanilla) ON DELETE CASCADE,
-    fecha DATE NOT NULL,
-    hora_inicio TIME NOT NULL,
-    hora_fin TIME NOT NULL,
-    estado_horario VARCHAR(20) NOT NULL DEFAULT 'disponible'
-        CHECK (estado_horario IN ('disponible', 'reservado')),
-    CONSTRAINT uq_horario_ventanilla_fecha_hora UNIQUE (id_ventanilla, fecha, hora_inicio),
-    CONSTRAINT ck_horario_rango_valido CHECK (hora_fin > hora_inicio)
+-- 8. HORARIOS DISPONIBLES
+CREATE TABLE IF NOT EXISTS public.horario_disponible (
+  id_horario SERIAL PRIMARY KEY,
+  id_ventanilla integer NOT NULL REFERENCES public.ventanilla(id_ventanilla) ON DELETE CASCADE,
+  fecha date NOT NULL,
+  hora_inicio time without time zone NOT NULL,
+  hora_fin time without time zone NOT NULL,
+  estado_horario character varying NOT NULL DEFAULT 'disponible' CHECK (estado_horario IN ('disponible', 'reservado'))
 );
 
-CREATE TABLE IF NOT EXISTS cita (
-    id_cita UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    codigo_cita VARCHAR(15) NOT NULL UNIQUE,
-    id_usuario UUID NOT NULL REFERENCES perfil_usuario(id_usuario),
-    id_horario INT NOT NULL UNIQUE REFERENCES horario_disponible(id_horario),
-    id_tramite INT NOT NULL REFERENCES tramite(id_tramite),
-    estado_cita VARCHAR(20) NOT NULL DEFAULT 'pendiente'
-        CHECK (estado_cita IN ('pendiente', 'confirmada', 'en_atencion', 'atendida', 'rechazada', 'cancelada')),
-    codigo_qr TEXT UNIQUE,
-    fecha_registro TIMESTAMPTZ DEFAULT now()
+-- 9. CITAS
+CREATE TABLE IF NOT EXISTS public.cita (
+  id_cita uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  codigo_cita character varying NOT NULL UNIQUE,
+  id_usuario uuid NOT NULL REFERENCES public.perfil_usuario(id_usuario),
+  id_horario integer NOT NULL UNIQUE REFERENCES public.horario_disponible(id_horario),
+  id_tramite integer NOT NULL REFERENCES public.tramite(id_tramite),
+  estado_cita character varying NOT NULL DEFAULT 'pendiente' CHECK (estado_cita IN ('pendiente', 'confirmada', 'en_atencion', 'atendida', 'rechazada', 'cancelada')),
+  codigo_qr text UNIQUE,
+  fecha_registro timestamp with time zone DEFAULT now()
 );
 
--- 6. ATENCIÓN Y CONTROL DE REQUISITOS
-CREATE TABLE IF NOT EXISTS atencion_cita (
-    id_atencion UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_cita UUID NOT NULL UNIQUE REFERENCES cita(id_cita) ON DELETE CASCADE,
-    id_agente UUID NOT NULL REFERENCES perfil_usuario(id_usuario),
-    hora_inicio_atencion TIMESTAMPTZ,
-    hora_fin_atencion TIMESTAMPTZ,
-    resultado_tramite VARCHAR(20) CHECK (resultado_tramite IN ('aceptado', 'rechazado')),
-    comentario_observacion TEXT,
-    fecha_registro TIMESTAMPTZ DEFAULT now()
+-- 10. ATENCIÓN DE CITAS EN VENTANILLA
+CREATE TABLE IF NOT EXISTS public.atencion_cita (
+  id_atencion uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_cita uuid NOT NULL UNIQUE REFERENCES public.cita(id_cita) ON DELETE CASCADE,
+  id_agente uuid NOT NULL REFERENCES public.perfil_usuario(id_usuario),
+  hora_inicio_atencion timestamp with time zone,
+  hora_fin_atencion timestamp with time zone,
+  resultado_tramite character varying CHECK (resultado_tramite IN ('aceptado', 'rechazado')),
+  comentario_observacion text,
+  fecha_registro timestamp with time zone DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS cita_requisito_estado (
-    id_cita_req SERIAL PRIMARY KEY,
-    id_atencion UUID NOT NULL REFERENCES atencion_cita(id_atencion) ON DELETE CASCADE,
-    id_requisito INT NOT NULL REFERENCES requisito_tramite(id_requisito),
-    cumplido BOOLEAN NOT NULL
+-- 11. ESTADO DE CUMPLIMIENTO DE REQUISITOS POR CITA
+CREATE TABLE IF NOT EXISTS public.cita_requisito_estado (
+  id_cita_req SERIAL PRIMARY KEY,
+  id_atencion uuid NOT NULL REFERENCES public.atencion_cita(id_atencion) ON DELETE CASCADE,
+  id_requisito integer NOT NULL REFERENCES public.requisito_tramite(id_requisito),
+  cumplido boolean NOT NULL
 );
 
--- 7. NOTIFICACIONES
-CREATE TABLE IF NOT EXISTS notificacion (
-    id_notificacion SERIAL PRIMARY KEY,
-    id_cita UUID NOT NULL REFERENCES cita(id_cita) ON DELETE CASCADE,
-    tipo_notificacion VARCHAR(10) NOT NULL CHECK (tipo_notificacion IN ('correo', 'sms')),
-    estado_envio VARCHAR(20) NOT NULL DEFAULT 'pendiente'
-        CHECK (estado_envio IN ('pendiente', 'enviado', 'fallido')),
-    fecha_envio TIMESTAMPTZ
+-- 12. NOTIFICACIONES
+CREATE TABLE IF NOT EXISTS public.notificacion (
+  id_notificacion SERIAL PRIMARY KEY,
+  id_cita uuid NOT NULL REFERENCES public.cita(id_cita) ON DELETE CASCADE,
+  tipo_notificacion character varying NOT NULL CHECK (tipo_notificacion IN ('correo', 'sms')),
+  estado_envio character varying NOT NULL DEFAULT 'pendiente' CHECK (estado_envio IN ('pendiente', 'enviado', 'fallido')),
+  fecha_envio timestamp with time zone
 );
 
 -- =========================================================================
--- DESACTIVACIÓN DE RLS Y PERMISOS TOTALES PÚBLICOS PARA MODO PRUEBAS
+-- PERMISOS PARA MODO DESARROLLO / PRUEBAS
 -- =========================================================================
 ALTER TABLE IF EXISTS public.agencia DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.ventanilla DISABLE ROW LEVEL SECURITY;
@@ -163,9 +142,6 @@ ALTER TABLE IF EXISTS public.cita DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.atencion_cita DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.cita_requisito_estado DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS public.notificacion DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.rol DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.permiso DISABLE ROW LEVEL SECURITY;
-ALTER TABLE IF EXISTS public.rol_permiso DISABLE ROW LEVEL SECURITY;
 
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, postgres;
