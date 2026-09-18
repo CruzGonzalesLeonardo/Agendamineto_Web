@@ -1,0 +1,117 @@
+{
+  "agencies": [
+    {
+      "id_agencia": 1,
+      "nombre_agencia": "AGENCIA OVALO CENTRAL",
+      "direccion": "AV. EL SOL 342, TERCER PARADERO",
+      "distrito": "Cusco - San Sebastián",
+      "telefono": "(084) 234567",
+      "latitud": -13.5226,
+      "longitud": -71.9673,
+      "activa": true,
+      "horario": "7:30 am - 12:00 am / 2:00 pm - 6:00 pm",
+      "dias": "L M MI J V S"
+    },
+    {
+      "id_agencia": 2,
+      "nombre_agencia": "AGENCIA OVALO SUR",
+      "direccion": "AV. DE LA CULTURA 1205, SEGUNDO PARADERO",
+      "distrito": "Cusco - Wanchaq",
+      "telefono": "(084) 890123",
+      "latitud": -13.5284,
+      "longitud": -71.9542,
+      "activa": true,
+      "horario": "7:30 am - 12:00 am / 2:00 pm - 6:00 pm",
+      "dias": "L M MI J V S"
+    },
+    {
+      "id_agencia": 3,
+      "nombre_agencia": "AGENCIA OVALO NORTE",
+      "direccion": "JR. TÚPAC AMARU 450, ZONA BANCO",
+      "distrito": "Cusco - Santiago",
+      "telefono": "(084) 456789",
+      "latitud": -13.5189,
+      "longitud": -71.9781,
+      "activa": true,
+      "horario": "7:30 am - 12:00 am / 2:00 pm - 6:00 pm",
+      "dias": "L M MI J V S"
+    }
+  ],
+  "procedures": [
+    {
+      "id_tramite": 1,
+      "nombre_tramite": "Apertura de Cuentas de Ahorros",
+      "descripcion": "Apertura presencial de cuenta sueldo, ahorro corriente o ahorro preferencial en agencias a nivel nacional.",
+      "duracion_minutos": 20,
+      "activo": true,
+      "requisitos": [
+        {
+          "id_requisito": 101,
+          "id_tramite": 1,
+          "descripcion_requisito": "Documento Nacional de Identidad (DNI) físico original y copia simple.",
+          "es_obligatorio": true
+        },
+        {
+          "id_requisito": 102,
+          "id_tramite": 1,
+          "descripcion_requisito": "Monto de apertura desde S/ 0.00 en cuenta sueldo o S/ 20.00 en ahorro simple.",
+          "es_obligatorio": true
+        }
+      ]
+    },
+    {
+      "id_tramite": 2,
+      "nombre_tramite": "Solicitud de Tarjeta de Débito Preferencial",
+      "descripcion": "Emisión, renovación o duplicado de tarjeta Multired con atención prioritaria para afiliados.",
+      "duracion_minutos": 15,
+      "activo": true,
+      "requisitos": [
+        {
+          "id_requisito": 201,
+          "id_tramite": 2,
+          "descripcion_requisito": "Documento de Identidad Original y Copia vigente.",
+          "es_obligatorio": true
+        },
+        {
+          "id_requisito": 202,
+          "id_tramite": 2,
+          "descripcion_requisito": "Comprobante de domicilio reciente o antiguo no menor a 3 meses.",
+          "es_obligatorio": true
+        },
+        {
+          "id_requisito": 203,
+          "id_tramite": 2,
+          "descripcion_requisito": "Monto mínimo de apertura según sea la categoría de cuenta.",
+          "es_obligatorio": true
+        }
+      ]
+    },
+    {
+      "id_tramite": 3,
+      "nombre_tramite": "Solicitud de Crédito Hipotecario",
+      "descripcion": "Evaluación crediticia presencial para financiamiento de vivienda con tasa preferencial del estado.",
+      "duracion_minutos": 45,
+      "activo": true,
+      "requisitos": [
+        {
+          "id_requisito": 301,
+          "id_tramite": 3,
+          "descripcion_requisito": "DNI del titular y cónyuge (original y copia vigente).",
+          "es_obligatorio": true
+        },
+        {
+          "id_requisito": 302,
+          "id_tramite": 3,
+          "descripcion_requisito": "Últimas 3 boletas de pago o declaración jurada de ingresos.",
+          "es_obligatorio": true
+        },
+        {
+          "id_requisito": 303,
+          "id_tramite": 3,
+          "descripcion_requisito": "HR y PU del inmueble a financiar emitido por la municipalidad correspondiente.",
+          "es_obligatorio": true
+        }
+      ]
+    }
+  ]
+}
