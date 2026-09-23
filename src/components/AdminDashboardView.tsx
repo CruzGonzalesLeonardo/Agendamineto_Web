@@ -20,6 +20,7 @@ import {
 } from '@/components/Icons';
 import { SupabaseAgencyRepository } from '@/infrastructure/repositories/supabase-agency-repository';
 import { SupabaseProcedureRepository } from '@/infrastructure/repositories/supabase-procedure-repository';
+import { createSupabaseBrowserClient } from '@/infrastructure/supabase/client';
 
 export type AdminTab = 'agencias' | 'tramites' | 'personal' | 'reportes';
 
@@ -151,6 +152,23 @@ export function AdminDashboardView({ forcedRole = 'ADMIN_GENERAL', showAdminNoti
               requisitos: p.requisitos ? p.requisitos.length : 3,
               fecha: '31-08-2026',
               estado: p.activo ? 'Activo' : 'Inactivo',
+            }))
+          );
+        }
+
+        const supabase = createSupabaseBrowserClient();
+        const { data: usersData } = await supabase
+          .from('perfil_usuario')
+          .select('*, rol:id_rol(nombre_rol), agencia:id_agencia(nombre_agencia)');
+
+        if (usersData && usersData.length > 0) {
+          setPersonalList(
+            usersData.map((u: any, idx: number) => ({
+              id: idx + 1,
+              nombre: `${u.nombres || ''} ${u.apellidos || ''}`.trim() || u.correo,
+              agenciaVentanilla: u.agencia?.nombre_agencia || 'Sede Central',
+              rol: u.rol?.nombre_rol || 'Personal',
+              estado: 'Activo',
             }))
           );
         }

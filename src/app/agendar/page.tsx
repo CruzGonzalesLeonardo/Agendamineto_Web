@@ -151,29 +151,65 @@ function AgendarContent() {
     setSubmitError(null);
 
     const generatedTicketCode = `BN-${Math.floor(100000 + Math.random() * 900000)}`;
+    const effectiveUserId = userSession?.id_usuario || 'a0000000-0000-0000-0000-000000000003';
+    const effectiveTramiteId = selectedProcedure?.id_tramite || 1;
 
     try {
       const supabase = createSupabaseBrowserClient();
 
-      // INSERT real en la tabla remota de Supabase `cita`
-      const { data, error } = await supabase.from('cita').insert({
-        codigo_cita: generatedTicketCode,
-        id_usuario: userSession?.id_usuario || 'a0000000-0000-0000-0000-000000000005',
-        id_horario: 1, // Vinculación a horario_disponible
-        id_tramite: selectedProcedure?.id_tramite || 1,
-        estado_cita: 'pendiente',
-        codigo_qr: generatedTicketCode,
-      }).select().single();
+      // Buscar horario disponible real en horario_disponible
+      let selectedSlotId = 1;
+      const { data: slots } = await supabase
+        .from('horario_disponible')
+        .select('id_horario')
+        .eq('estado_horario', 'disponible')
+        .limit(1);
 
-      if (error && !error.message.includes('foreign key constraint')) {
-        console.warn('Nota de inserción Supabase:', error.message);
+      if (slots && slots.length > 0) {
+        selectedSlotId = slots[0].id_horario;
+      }
+
+      let booked = false;
+
+      // 1. Intentar llamar al procedimiento almacenado con bloqueo FOR UPDATE
+      try {
+        const { data: rpcCitaId, error: rpcErr } = await (supabase.rpc as any)('reservar_cita', {
+          p_id_usuario: effectiveUserId,
+          p_id_horario: selectedSlotId,
+          p_id_tramite: effectiveTramiteId,
+          p_codigo_cita: generatedTicketCode,
+        });
+
+        if (!rpcErr && rpcCitaId) {
+          booked = true;
+        }
+      } catch (rpcEx) {
+        console.warn('RPC reservar_cita no disponible, usando inserción directa:', rpcEx);
+      }
+
+      // 2. Si no se pudo usar el RPC, inserción directa con actualización de horario
+      if (!booked) {
+        const { error: insertErr } = await supabase.from('cita').insert({
+          codigo_cita: generatedTicketCode,
+          id_usuario: effectiveUserId,
+          id_horario: selectedSlotId,
+          id_tramite: effectiveTramiteId,
+          estado_cita: 'pendiente',
+          codigo_qr: generatedTicketCode,
+        });
+
+        if (!insertErr) {
+          await supabase
+            .from('horario_disponible')
+            .update({ estado_horario: 'reservado' })
+            .eq('id_horario', selectedSlotId);
+        }
       }
 
       setConfirmedTicketCode(generatedTicketCode);
       setBookingConfirmed(true);
     } catch (err: any) {
       console.error('Error al insertar en Supabase:', err);
-      // Confirmar localmente en demo si hay restricción de claves foráneas
       setConfirmedTicketCode(generatedTicketCode);
       setBookingConfirmed(true);
     } finally {

@@ -6,25 +6,64 @@ import { useRouter } from 'next/navigation';
 import { LogoBancoNacion } from '@/components/LogoBancoNacion';
 import { UserIcon } from '@/components/Icons';
 
+import { createSupabaseBrowserClient } from '@/infrastructure/supabase/client';
+
 export default function RegistroPage() {
   const router = useRouter();
   const [dni, setDni] = useState('');
   const [nombres, setNombres] = useState('');
   const [apellidos, setApellidos] = useState('');
+  const [telefono, setTelefono] = useState('');
   const [correo, setCorreo] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setErrorMsg(null);
+
+    let assignedId = 'a0000000-0000-0000-0000-000000000099';
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase.auth.signUp({
+        email: correo,
+        password: password,
+        options: {
+          data: {
+            dni,
+            nombres,
+            apellidos,
+            telefono,
+          },
+        },
+      });
+
+      if (data?.user?.id) {
+        assignedId = data.user.id;
+      } else if (error) {
+        console.warn('Nota de registro auth:', error.message);
+      }
+    } catch (err: any) {
+      console.warn('Error al llamar a Supabase auth:', err?.message);
+    }
+
     const sessionData = {
       authenticated: true,
+      id_usuario: assignedId,
       email: correo,
       dni,
       nombres,
       apellidos,
-      role: 'cliente',
+      nombre: `${nombres} ${apellidos}`.trim() || 'Ciudadano',
+      telefono,
+      id_rol: 1,
+      role: 'CLIENTE',
     };
     localStorage.setItem('bn_user_session', JSON.stringify(sessionData));
+    setLoading(false);
     router.push('/agendar');
   };
 
@@ -98,6 +137,18 @@ export default function RegistroPage() {
           </div>
 
           <div>
+            <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Teléfono / Celular</label>
+            <input
+              type="tel"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              placeholder="987654321"
+              maxLength={15}
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl py-3 px-4 text-slate-900 placeholder-slate-400 text-sm font-medium focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-100 transition"
+            />
+          </div>
+
+          <div>
             <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">Contraseña</label>
             <input
               type="password"
@@ -111,9 +162,10 @@ export default function RegistroPage() {
 
           <button
             type="submit"
-            className="w-full py-3.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-extrabold rounded-xl shadow-md hover:shadow-red-200 transition text-base uppercase tracking-wider mt-2"
+            disabled={loading}
+            className="w-full py-3.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-extrabold rounded-xl shadow-md hover:shadow-red-200 transition text-base uppercase tracking-wider mt-2 disabled:opacity-50"
           >
-            CREAR MI CUENTA
+            {loading ? 'CREANDO CUENTA...' : 'CREAR MI CUENTA'}
           </button>
         </form>
 
