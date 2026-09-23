@@ -5,6 +5,32 @@ import { createSupabaseServerClient } from "@/infrastructure/supabase/server";
 export class SupabaseAppointmentRepository implements AppointmentRepository {
   async create(input: CreateAppointmentInput): Promise<Appointment> {
     const supabase = await createSupabaseServerClient();
+
+    // 1. Intentar usar el procedimiento almacenado con bloqueo de concurrencia
+    try {
+      const { data: rpcCitaId, error: rpcError } = await (supabase.rpc as any)('reservar_cita', {
+        p_id_usuario: input.id_usuario,
+        p_id_horario: input.id_horario,
+        p_id_tramite: input.id_tramite,
+        p_codigo_cita: input.codigo_cita,
+      });
+
+      if (!rpcError && rpcCitaId) {
+        const { data: createdCita, error: fetchErr } = await supabase
+          .from("cita")
+          .select("*")
+          .eq("id_cita", rpcCitaId)
+          .single();
+
+        if (!fetchErr && createdCita) {
+          return createdCita as Appointment;
+        }
+      }
+    } catch (rpcErr) {
+      console.warn("Fallo RPC reservar_cita, procediendo con inserción directa:", rpcErr);
+    }
+
+    // 2. Inserción directa en tabla cita y actualización en horario_disponible
     const { data, error } = await supabase
       .from("cita")
       .insert({
@@ -13,12 +39,19 @@ export class SupabaseAppointmentRepository implements AppointmentRepository {
         id_horario: input.id_horario,
         id_tramite: input.id_tramite,
         estado_cita: "pendiente",
-        codigo_qr: input.codigo_qr ?? null,
+        codigo_qr: input.codigo_qr ?? input.codigo_cita,
       })
       .select()
       .single();
 
     if (error) throw new Error(`No se pudo crear la cita: ${error.message}`);
+
+    // Actualizar estado de horario a 'reservado'
+    await supabase
+      .from("horario_disponible")
+      .update({ estado_horario: "reservado" })
+      .eq("id_horario", input.id_horario);
+
     return data as Appointment;
   }
 
@@ -61,4 +94,4 @@ export class SupabaseAppointmentRepository implements AppointmentRepository {
       numero_ventanilla: item.horario_disponible?.ventanilla?.numero_ventanilla,
     }));
   }
-}
+}

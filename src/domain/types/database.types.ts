@@ -8,7 +8,7 @@ export type Json =
 
 export type UserRole = 'CLIENTE' | 'AGENTE' | 'ADMIN_AGENCIA' | 'ADMIN_GENERAL';
 
-export type EstadoHorario = 'disponible' | 'reservado';
+export type EstadoHorario = 'disponible' | 'reservado' | 'bloqueado' | 'completado';
 
 export type EstadoCita =
   | 'pendiente'
@@ -27,6 +27,69 @@ export type EstadoEnvio = 'pendiente' | 'enviado' | 'fallido';
 export interface Database {
   public: {
     Tables: {
+      rol: {
+        Row: {
+          id_rol: number;
+          nombre_rol: string;
+        };
+        Insert: {
+          id_rol?: number;
+          nombre_rol: string;
+        };
+        Update: {
+          id_rol?: number;
+          nombre_rol?: string;
+        };
+        Relationships: [];
+      };
+      permiso: {
+        Row: {
+          id_permiso: number;
+          codigo_permiso: string;
+          descripcion: string | null;
+        };
+        Insert: {
+          id_permiso?: number;
+          codigo_permiso: string;
+          descripcion?: string | null;
+        };
+        Update: {
+          id_permiso?: number;
+          codigo_permiso?: string;
+          descripcion?: string | null;
+        };
+        Relationships: [];
+      };
+      rol_permiso: {
+        Row: {
+          id_rol: number;
+          id_permiso: number;
+        };
+        Insert: {
+          id_rol: number;
+          id_permiso: number;
+        };
+        Update: {
+          id_rol?: number;
+          id_permiso?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "rol_permiso_id_rol_fkey";
+            columns: ["id_rol"];
+            isOneToOne: false;
+            referencedRelation: "rol";
+            referencedColumns: ["id_rol"];
+          },
+          {
+            foreignKeyName: "rol_permiso_id_permiso_fkey";
+            columns: ["id_permiso"];
+            isOneToOne: false;
+            referencedRelation: "permiso";
+            referencedColumns: ["id_permiso"];
+          }
+        ];
+      };
       agencia: {
         Row: {
           id_agencia: number;
@@ -89,41 +152,89 @@ export interface Database {
           }
         ];
       };
+      plantilla_horario_agencia: {
+        Row: {
+          id_plantilla: number;
+          id_agencia: number;
+          dia_semana: number;
+          hora_apertura: string;
+          hora_cierre: string;
+          hora_inicio_almuerzo: string | null;
+          hora_fin_almuerzo: string | null;
+          intervalo_minutos: number;
+          activa: boolean;
+        };
+        Insert: {
+          id_plantilla?: number;
+          id_agencia: number;
+          dia_semana: number;
+          hora_apertura: string;
+          hora_cierre: string;
+          hora_inicio_almuerzo?: string | null;
+          hora_fin_almuerzo?: string | null;
+          intervalo_minutos?: number;
+          activa?: boolean;
+        };
+        Update: {
+          id_plantilla?: number;
+          id_agencia?: number;
+          dia_semana?: number;
+          hora_apertura?: string;
+          hora_cierre?: string;
+          hora_inicio_almuerzo?: string | null;
+          hora_fin_almuerzo?: string | null;
+          intervalo_minutos?: number;
+          activa?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "plantilla_horario_agencia_id_agencia_fkey";
+            columns: ["id_agencia"];
+            isOneToOne: false;
+            referencedRelation: "agencia";
+            referencedColumns: ["id_agencia"];
+          }
+        ];
+      };
       perfil_usuario: {
         Row: {
           id_usuario: string;
-          dni: string | null;
-          nombre_completo: string;
+          dni: string;
+          nombres: string;
+          apellidos: string;
           correo: string;
           telefono: string | null;
-          rol: UserRole;
+          id_rol: number;
           id_agencia: number | null;
-          created_at: string | null;
-          contrasenia: string | null;
         };
         Insert: {
           id_usuario: string;
-          dni?: string | null;
-          nombre_completo: string;
+          dni: string;
+          nombres: string;
+          apellidos: string;
           correo: string;
           telefono?: string | null;
-          rol?: UserRole;
+          id_rol?: number;
           id_agencia?: number | null;
-          created_at?: string | null;
-          contrasenia?: string | null;
         };
         Update: {
           id_usuario?: string;
-          dni?: string | null;
-          nombre_completo?: string;
+          dni?: string;
+          nombres?: string;
+          apellidos?: string;
           correo?: string;
           telefono?: string | null;
-          rol?: UserRole;
+          id_rol?: number;
           id_agencia?: number | null;
-          created_at?: string | null;
-          contrasenia?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: "perfil_usuario_id_rol_fkey";
+            columns: ["id_rol"];
+            isOneToOne: false;
+            referencedRelation: "rol";
+            referencedColumns: ["id_rol"];
+          },
           {
             foreignKeyName: "perfil_usuario_id_agencia_fkey";
             columns: ["id_agencia"];
@@ -466,7 +577,32 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      generar_horarios_agencia: {
+        Args: {
+          p_id_agencia: number;
+          p_fecha_inicio: string;
+          p_fecha_fin: string;
+        };
+        Returns: number;
+      };
+      bloquear_rango_horario: {
+        Args: {
+          p_id_ventanilla: number;
+          p_fecha: string;
+          p_hora_inicio: string;
+          p_hora_fin: string;
+        };
+        Returns: number;
+      };
+      reservar_cita: {
+        Args: {
+          p_id_usuario: string;
+          p_id_horario: number;
+          p_id_tramite: number;
+          p_codigo_cita: string;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       user_role: UserRole;

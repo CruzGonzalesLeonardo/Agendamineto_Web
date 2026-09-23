@@ -19,7 +19,7 @@ export interface AvailableSlot {
   fecha: string;
   hora_inicio: string;
   hora_fin: string;
-  estado_horario: 'disponible' | 'reservado';
+  estado_horario: 'disponible' | 'reservado' | 'bloqueado' | 'completado';
   ventanilla?: Ventanilla;
 }
 

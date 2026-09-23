@@ -31,13 +31,13 @@ export default function VentanillaDashboard() {
   const router = useRouter();
   const [operatorName, setOperatorName] = useState('Juan Pérez');
   const [agenciaNombre, setAgenciaNombre] = useState('Agencia Cusco Central');
-  const [ventanillaNumero, setVentanillaNumero] = useState('Ventanilla 02');
+  const [ventanillaNumero, setVentanillaNumero] = useState('V-01');
 
   // Vista activa: 'agenda' (Vista 1) o 'atencion' (Vista 2)
   const [activeView, setActiveView] = useState<'agenda' | 'atencion'>('agenda');
 
   // Filtros de la Vista 1 (Agenda)
-  const [selectedDate, setSelectedDate] = useState('2026-09-18');
+  const [selectedDate, setSelectedDate] = useState('2026-09-23');
   const [searchQuery, setSearchQuery] = useState('');
   const [manualCodeInput, setManualCodeInput] = useState('');
 
@@ -51,18 +51,17 @@ export default function VentanillaDashboard() {
   // Lista de citas en vivo (sincronizada con las tablas de la agenda)
   const [agendaList, setAgendaList] = useState<AppointmentAgendaItem[]>([
     {
-      codigo: 'T-005',
-      hora: '11:00',
-      cliente: 'Sofía Ramírez',
-      dni: '45.678.921',
-      telefono: '+51 987 654 321',
-      email: 'sofia.ramirez@email.com',
-      tramite: 'Bloqueo de Tarjeta Multired',
+      codigo: 'CIT-2026-001',
+      hora: '08:00',
+      cliente: 'Maria Quispe Ciudadana',
+      dni: '87654321',
+      telefono: '+51 955 443 322',
+      email: 'cliente.prueba@gmail.com',
+      tramite: 'Apertura de Cuenta de Ahorros',
       estado: 'pendiente',
       requisitos: [
-        { id: 1, descripcion: 'DNI original y fotocopia vigente', estado: 'ok' },
-        { id: 2, descripcion: 'Denuncia policial o carta de extravío', estado: 'ok' },
-        { id: 3, descripcion: 'Formulario de Bloqueo F-101 firmado', estado: 'pendiente' },
+        { id: 1, descripcion: 'DNI físico vigente (original y copia).', estado: 'ok' },
+        { id: 2, descripcion: 'Recibo de servicio público (agua o luz) con antigüedad no mayor a 2 meses.', estado: 'ok' },
       ],
     },
     {
