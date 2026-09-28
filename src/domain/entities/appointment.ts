@@ -27,12 +27,16 @@ export interface Appointment {
   id_cita: string;
   codigo_cita: string;
   id_usuario: string;
-  id_horario: number;
+  id_ventanilla: number;
   id_tramite: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
   estado_cita: AppointmentState;
   codigo_qr?: string | null;
   fecha_registro?: string | null;
-  // Relaciones pobladas opcionales
+  // Campos de compatibilidad y relaciones pobladas opcionales
+  id_horario?: number;
   tramite_nombre?: string;
   agencia_nombre?: string;
   horario_fecha?: string;
@@ -71,10 +75,14 @@ export interface Notificacion {
 
 export interface CreateAppointmentDTO {
   id_usuario: string;
-  id_horario: number;
+  id_ventanilla?: number;
   id_tramite: number;
   codigo_cita: string;
+  fecha?: string;
+  hora_inicio?: string;
+  hora_fin?: string;
   codigo_qr?: string;
+  id_horario?: number;
 }
 
 export type CreateAppointmentInput = CreateAppointmentDTO;

@@ -57,15 +57,13 @@ export default function ClienteDashboard() {
             codigo_cita,
             estado_cita,
             codigo_qr,
+            fecha,
+            hora_inicio,
+            hora_fin,
             tramite:id_tramite ( nombre_tramite ),
-            horario_disponible:id_horario (
-              fecha,
-              hora_inicio,
-              hora_fin,
-              ventanilla:id_ventanilla (
-                numero_ventanilla,
-                agencia:id_agencia ( nombre_agencia )
-              )
+            ventanilla:id_ventanilla (
+              numero_ventanilla,
+              agencia:id_agencia ( nombre_agencia )
             )
           `)
           .eq('id_usuario', currentUserId)
@@ -78,11 +76,11 @@ export default function ClienteDashboard() {
             id_cita: c.id_cita,
             codigo_cita: c.codigo_cita,
             tramite_nombre: c.tramite?.nombre_tramite || 'Trámite Bancario',
-            agencia_nombre: c.horario_disponible?.ventanilla?.agencia?.nombre_agencia || 'Agencia Cusco Central',
-            numero_ventanilla: c.horario_disponible?.ventanilla?.numero_ventanilla || 'V-01',
-            fecha: c.horario_disponible?.fecha || '2026-09-23',
-            hora_inicio: c.horario_disponible?.hora_inicio || '08:00',
-            hora_fin: c.horario_disponible?.hora_fin || '08:15',
+            agencia_nombre: c.ventanilla?.agencia?.nombre_agencia || 'Agencia Cusco Central',
+            numero_ventanilla: c.ventanilla?.numero_ventanilla || 'V-01',
+            fecha: c.fecha || '2026-09-24',
+            hora_inicio: c.hora_inicio || '08:00',
+            hora_fin: c.hora_fin || '08:15',
             estado_cita: c.estado_cita,
             codigo_qr: c.codigo_qr || c.codigo_cita,
           }));

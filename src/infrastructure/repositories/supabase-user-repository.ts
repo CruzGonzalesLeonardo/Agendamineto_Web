@@ -4,13 +4,29 @@ import { createSupabaseBrowserClient } from '@/infrastructure/supabase/client';
 export class SupabaseUserRepository {
   async authenticateUser(identifier: string, contrasenia?: string): Promise<UserProfile | null> {
     const cleanIdentifier = identifier.trim();
+    const cleanPassword = (contrasenia || '').trim();
+
+    if (!cleanIdentifier || !cleanPassword) {
+      return null;
+    }
+
     const supabase = createSupabaseBrowserClient();
 
     // 1. Consultar perfil en perfil_usuario relacionando rol y agencia
-    const { data, error } = await supabase
+    // Permitir ingresar tanto DNI como Correo electrónico
+    let query = supabase
       .from('perfil_usuario')
-      .select('*, rol:id_rol(nombre_rol), agencia:id_agencia(nombre_agencia)')
-      .or(`dni.eq.${cleanIdentifier},correo.eq.${cleanIdentifier}`);
+      .select('*, rol:id_rol(nombre_rol), agencia:id_agencia(nombre_agencia)');
+
+    if (cleanIdentifier.includes('@')) {
+      query = query.ilike('correo', cleanIdentifier);
+    } else if (/^\d+$/.test(cleanIdentifier)) {
+      query = query.eq('dni', cleanIdentifier);
+    } else {
+      query = query.or(`dni.eq.${cleanIdentifier},correo.ilike.${cleanIdentifier}`);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error de consulta remota en Supabase perfil_usuario:', error.message);
@@ -23,17 +39,34 @@ export class SupabaseUserRepository {
 
     const item = data[0];
 
-    // 2. Intentar autenticar contra auth.users si se cuenta con contraseña
-    if (contrasenia && contrasenia.trim() !== '') {
-      try {
-        await supabase.auth.signInWithPassword({
-          email: item.correo,
-          password: contrasenia,
-        });
-      } catch (authErr) {
-        // En caso de usuarios con hash mock del seed directo en PostgreSQL, se permite el acceso sin romper
-        console.warn('Nota: Inicio vía perfil directo (Supabase auth no sincronizado o mock seed)');
+    // 2. Validación de contraseña tradicional almacenada en perfil_usuario (password_hash)
+    const dbPassword = item.password_hash ?? item.contraseña ?? (item as any)['contrasenia'] ?? null;
+    let isValidPassword = false;
+
+    if (dbPassword !== null && dbPassword !== undefined) {
+      if (String(dbPassword).trim() === cleanPassword) {
+        isValidPassword = true;
       }
+    }
+
+    // Respaldo secundario con Supabase Auth si está configurado
+    if (!isValidPassword) {
+      try {
+        const { error: authErr } = await supabase.auth.signInWithPassword({
+          email: item.correo,
+          password: cleanPassword,
+        });
+        if (!authErr) {
+          isValidPassword = true;
+        }
+      } catch (authErr) {
+        // Ignorar si auth no está sincronizado
+      }
+    }
+
+    // Si la contraseña no coincide con la base de datos ni con auth, denegar acceso
+    if (!isValidPassword) {
+      return null;
     }
 
     const fullName = `${item.nombres || ''} ${item.apellidos || ''}`.trim() || item.correo;
@@ -54,6 +87,7 @@ export class SupabaseUserRepository {
       rol: roleEnum,
       id_agencia: item.id_agencia,
       agencia_nombre: agencyName,
+      password_hash: item.password_hash ?? item.contraseña ?? null,
     };
   }
 
@@ -83,6 +117,7 @@ export class SupabaseUserRepository {
       rol: roleIdToEnum(item.id_rol || 1),
       id_agencia: item.id_agencia,
       agencia_nombre: (item.agencia as any)?.nombre_agencia || null,
+      password_hash: item.password_hash ?? item.contraseña ?? null,
     };
   }
 }

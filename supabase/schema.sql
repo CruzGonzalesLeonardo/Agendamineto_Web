@@ -81,6 +81,7 @@ CREATE TABLE public.perfil_usuario (
     apellidos VARCHAR(100) NOT NULL,
     correo VARCHAR(150) NOT NULL UNIQUE,
     telefono VARCHAR(15),
+    password_hash VARCHAR(255),
     id_rol INT NOT NULL REFERENCES public.rol(id_rol) DEFAULT 1,
     id_agencia INT REFERENCES public.agencia(id_agencia) ON DELETE SET NULL
 );
@@ -115,25 +116,16 @@ CREATE TABLE public.requisito_tramite (
     es_obligatorio BOOLEAN DEFAULT true
 );
 
--- 6. DISPONIBILIDAD Y CITAS
-CREATE TABLE public.horario_disponible (
-    id_horario SERIAL PRIMARY KEY,
-    id_ventanilla INT NOT NULL REFERENCES public.ventanilla(id_ventanilla) ON DELETE CASCADE,
-    fecha DATE NOT NULL,
-    hora_inicio TIME NOT NULL,
-    hora_fin TIME NOT NULL,
-    estado_horario VARCHAR(20) NOT NULL DEFAULT 'disponible'
-        CHECK (estado_horario IN ('disponible', 'reservado', 'bloqueado', 'completado')),
-    CONSTRAINT uq_horario_ventanilla_fecha_hora UNIQUE (id_ventanilla, fecha, hora_inicio),
-    CONSTRAINT ck_horario_rango_valido CHECK (hora_fin > hora_inicio)
-);
-
+-- 6. CITAS
 CREATE TABLE public.cita (
     id_cita UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     codigo_cita VARCHAR(15) NOT NULL UNIQUE,
     id_usuario UUID NOT NULL REFERENCES public.perfil_usuario(id_usuario),
-    id_horario INT NOT NULL UNIQUE REFERENCES public.horario_disponible(id_horario),
+    id_ventanilla INT NOT NULL REFERENCES public.ventanilla(id_ventanilla),
     id_tramite INT NOT NULL REFERENCES public.tramite(id_tramite),
+    fecha DATE NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
     estado_cita VARCHAR(20) NOT NULL DEFAULT 'pendiente'
         CHECK (estado_cita IN ('pendiente', 'confirmada', 'en_atencion', 'atendida', 'rechazada', 'cancelada')),
     codigo_qr TEXT UNIQUE,

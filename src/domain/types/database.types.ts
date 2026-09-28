@@ -96,6 +96,8 @@ export interface Database {
           nombre_agencia: string;
           direccion: string;
           distrito: string;
+          provincia?: string | null;
+          departamento?: string | null;
           telefono: string | null;
           latitud: number | null;
           longitud: number | null;
@@ -106,6 +108,8 @@ export interface Database {
           nombre_agencia: string;
           direccion: string;
           distrito: string;
+          provincia?: string | null;
+          departamento?: string | null;
           telefono?: string | null;
           latitud?: number | null;
           longitud?: number | null;
@@ -116,6 +120,8 @@ export interface Database {
           nombre_agencia?: string;
           direccion?: string;
           distrito?: string;
+          provincia?: string | null;
+          departamento?: string | null;
           telefono?: string | null;
           latitud?: number | null;
           longitud?: number | null;
@@ -204,8 +210,10 @@ export interface Database {
           apellidos: string;
           correo: string;
           telefono: string | null;
+          password_hash: string | null;
           id_rol: number;
           id_agencia: number | null;
+          contraseña?: string | null;
         };
         Insert: {
           id_usuario: string;
@@ -214,8 +222,10 @@ export interface Database {
           apellidos: string;
           correo: string;
           telefono?: string | null;
+          password_hash?: string | null;
           id_rol?: number;
           id_agencia?: number | null;
+          contraseña?: string | null;
         };
         Update: {
           id_usuario?: string;
@@ -224,8 +234,10 @@ export interface Database {
           apellidos?: string;
           correo?: string;
           telefono?: string | null;
+          password_hash?: string | null;
           id_rol?: number;
           id_agencia?: number | null;
+          contraseña?: string | null;
         };
         Relationships: [
           {
@@ -366,48 +378,16 @@ export interface Database {
           }
         ];
       };
-      horario_disponible: {
-        Row: {
-          id_horario: number;
-          id_ventanilla: number;
-          fecha: string;
-          hora_inicio: string;
-          hora_fin: string;
-          estado_horario: EstadoHorario;
-        };
-        Insert: {
-          id_horario?: number;
-          id_ventanilla: number;
-          fecha: string;
-          hora_inicio: string;
-          hora_fin: string;
-          estado_horario?: EstadoHorario;
-        };
-        Update: {
-          id_horario?: number;
-          id_ventanilla?: number;
-          fecha?: string;
-          hora_inicio?: string;
-          hora_fin?: string;
-          estado_horario?: EstadoHorario;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "horario_disponible_id_ventanilla_fkey";
-            columns: ["id_ventanilla"];
-            isOneToOne: false;
-            referencedRelation: "ventanilla";
-            referencedColumns: ["id_ventanilla"];
-          }
-        ];
-      };
       cita: {
         Row: {
           id_cita: string;
           codigo_cita: string;
           id_usuario: string;
-          id_horario: number;
+          id_ventanilla: number;
           id_tramite: number;
+          fecha: string;
+          hora_inicio: string;
+          hora_fin: string;
           estado_cita: EstadoCita;
           codigo_qr: string | null;
           fecha_registro: string | null;
@@ -416,8 +396,11 @@ export interface Database {
           id_cita?: string;
           codigo_cita: string;
           id_usuario: string;
-          id_horario: number;
+          id_ventanilla: number;
           id_tramite: number;
+          fecha: string;
+          hora_inicio: string;
+          hora_fin: string;
           estado_cita?: EstadoCita;
           codigo_qr?: string | null;
           fecha_registro?: string | null;
@@ -426,8 +409,11 @@ export interface Database {
           id_cita?: string;
           codigo_cita?: string;
           id_usuario?: string;
-          id_horario?: number;
+          id_ventanilla?: number;
           id_tramite?: number;
+          fecha?: string;
+          hora_inicio?: string;
+          hora_fin?: string;
           estado_cita?: EstadoCita;
           codigo_qr?: string | null;
           fecha_registro?: string | null;
@@ -441,11 +427,11 @@ export interface Database {
             referencedColumns: ["id_usuario"];
           },
           {
-            foreignKeyName: "cita_id_horario_fkey";
-            columns: ["id_horario"];
-            isOneToOne: true;
-            referencedRelation: "horario_disponible";
-            referencedColumns: ["id_horario"];
+            foreignKeyName: "cita_id_ventanilla_fkey";
+            columns: ["id_ventanilla"];
+            isOneToOne: false;
+            referencedRelation: "ventanilla";
+            referencedColumns: ["id_ventanilla"];
           },
           {
             foreignKeyName: "cita_id_tramite_fkey";

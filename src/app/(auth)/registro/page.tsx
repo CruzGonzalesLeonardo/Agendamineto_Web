@@ -43,6 +43,11 @@ export default function RegistroPage() {
 
       if (data?.user?.id) {
         assignedId = data.user.id;
+        // Almacenar la contraseña en perfil_usuario para el login tradicional
+        await supabase
+          .from('perfil_usuario')
+          .update({ password_hash: password })
+          .eq('id_usuario', assignedId);
       } else if (error) {
         console.warn('Nota de registro auth:', error.message);
       }

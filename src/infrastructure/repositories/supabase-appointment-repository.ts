@@ -6,53 +6,73 @@ export class SupabaseAppointmentRepository implements AppointmentRepository {
   async create(input: CreateAppointmentInput): Promise<Appointment> {
     const supabase = await createSupabaseServerClient();
 
-    // 1. Intentar usar el procedimiento almacenado con bloqueo de concurrencia
-    try {
-      const { data: rpcCitaId, error: rpcError } = await (supabase.rpc as any)('reservar_cita', {
-        p_id_usuario: input.id_usuario,
-        p_id_horario: input.id_horario,
-        p_id_tramite: input.id_tramite,
-        p_codigo_cita: input.codigo_cita,
-      });
-
-      if (!rpcError && rpcCitaId) {
-        const { data: createdCita, error: fetchErr } = await supabase
-          .from("cita")
-          .select("*")
-          .eq("id_cita", rpcCitaId)
-          .single();
-
-        if (!fetchErr && createdCita) {
-          return createdCita as Appointment;
+    // Determinar la ventanilla adecuada si no viene especificada
+    let ventanillaId = input.id_ventanilla || 1;
+    if (!input.id_ventanilla) {
+      try {
+        const { data: vData } = await supabase
+          .from("ventanilla")
+          .select("id_ventanilla")
+          .eq("activa", true)
+          .limit(1);
+        if (vData && vData.length > 0) {
+          ventanillaId = vData[0].id_ventanilla;
         }
+      } catch (vErr) {
+        console.warn("No se pudo obtener ventanilla predeterminada, usando 1:", vErr);
       }
-    } catch (rpcErr) {
-      console.warn("Fallo RPC reservar_cita, procediendo con inserción directa:", rpcErr);
     }
 
-    // 2. Inserción directa en tabla cita y actualización en horario_disponible
+    const fechaCita = input.fecha || new Date().toISOString().split("T")[0];
+    const horaInicio = input.hora_inicio || "08:00:00";
+    const horaFin = input.hora_fin || "08:30:00";
+
+    // Inserción directa en la nueva estructura de la tabla cita
     const { data, error } = await supabase
       .from("cita")
       .insert({
         codigo_cita: input.codigo_cita,
         id_usuario: input.id_usuario,
-        id_horario: input.id_horario,
+        id_ventanilla: ventanillaId,
         id_tramite: input.id_tramite,
+        fecha: fechaCita,
+        hora_inicio: horaInicio,
+        hora_fin: horaFin,
         estado_cita: "pendiente",
         codigo_qr: input.codigo_qr ?? input.codigo_cita,
       })
-      .select()
+      .select(`
+        *,
+        tramite:id_tramite ( nombre_tramite ),
+        ventanilla:id_ventanilla (
+          numero_ventanilla,
+          agencia:id_agencia ( nombre_agencia )
+        )
+      `)
       .single();
 
     if (error) throw new Error(`No se pudo crear la cita: ${error.message}`);
 
-    // Actualizar estado de horario a 'reservado'
-    await supabase
-      .from("horario_disponible")
-      .update({ estado_horario: "reservado" })
-      .eq("id_horario", input.id_horario);
-
-    return data as Appointment;
+    const item = data as any;
+    return {
+      id_cita: item.id_cita,
+      codigo_cita: item.codigo_cita,
+      id_usuario: item.id_usuario,
+      id_ventanilla: item.id_ventanilla,
+      id_tramite: item.id_tramite,
+      fecha: item.fecha,
+      hora_inicio: item.hora_inicio,
+      hora_fin: item.hora_fin,
+      estado_cita: item.estado_cita,
+      codigo_qr: item.codigo_qr,
+      fecha_registro: item.fecha_registro,
+      tramite_nombre: item.tramite?.nombre_tramite,
+      agencia_nombre: item.ventanilla?.agencia?.nombre_agencia,
+      horario_fecha: item.fecha,
+      horario_inicio: item.hora_inicio,
+      horario_fin: item.hora_fin,
+      numero_ventanilla: item.ventanilla?.numero_ventanilla,
+    };
   }
 
   async findByCitizen(citizenId: string): Promise<Appointment[]> {
@@ -61,15 +81,10 @@ export class SupabaseAppointmentRepository implements AppointmentRepository {
       .from("cita")
       .select(`
         *,
-        tramite ( nombre_tramite ),
-        horario_disponible (
-          fecha,
-          hora_inicio,
-          hora_fin,
-          ventanilla (
-            numero_ventanilla,
-            agencia ( nombre_agencia )
-          )
+        tramite:id_tramite ( nombre_tramite ),
+        ventanilla:id_ventanilla (
+          numero_ventanilla,
+          agencia:id_agencia ( nombre_agencia )
         )
       `)
       .eq("id_usuario", citizenId)
@@ -81,17 +96,20 @@ export class SupabaseAppointmentRepository implements AppointmentRepository {
       id_cita: item.id_cita,
       codigo_cita: item.codigo_cita,
       id_usuario: item.id_usuario,
-      id_horario: item.id_horario,
+      id_ventanilla: item.id_ventanilla,
       id_tramite: item.id_tramite,
+      fecha: item.fecha,
+      hora_inicio: item.hora_inicio,
+      hora_fin: item.hora_fin,
       estado_cita: item.estado_cita,
       codigo_qr: item.codigo_qr,
       fecha_registro: item.fecha_registro,
       tramite_nombre: item.tramite?.nombre_tramite,
-      agencia_nombre: item.horario_disponible?.ventanilla?.agencia?.nombre_agencia,
-      horario_fecha: item.horario_disponible?.fecha,
-      horario_inicio: item.horario_disponible?.hora_inicio,
-      horario_fin: item.horario_disponible?.hora_fin,
-      numero_ventanilla: item.horario_disponible?.ventanilla?.numero_ventanilla,
+      agencia_nombre: item.ventanilla?.agencia?.nombre_agencia,
+      horario_fecha: item.fecha,
+      horario_inicio: item.hora_inicio,
+      horario_fin: item.hora_fin,
+      numero_ventanilla: item.ventanilla?.numero_ventanilla,
     }));
   }
 }

@@ -157,53 +157,59 @@ function AgendarContent() {
     try {
       const supabase = createSupabaseBrowserClient();
 
-      // Buscar horario disponible real en horario_disponible
-      let selectedSlotId = 1;
-      const { data: slots } = await supabase
-        .from('horario_disponible')
-        .select('id_horario')
-        .eq('estado_horario', 'disponible')
-        .limit(1);
-
-      if (slots && slots.length > 0) {
-        selectedSlotId = slots[0].id_horario;
-      }
-
-      let booked = false;
-
-      // 1. Intentar llamar al procedimiento almacenado con bloqueo FOR UPDATE
+      // Determinar ventanilla de la agencia seleccionada
+      let ventanillaId = 1;
       try {
-        const { data: rpcCitaId, error: rpcErr } = await (supabase.rpc as any)('reservar_cita', {
-          p_id_usuario: effectiveUserId,
-          p_id_horario: selectedSlotId,
-          p_id_tramite: effectiveTramiteId,
-          p_codigo_cita: generatedTicketCode,
-        });
+        const { data: vList } = await supabase
+          .from('ventanilla')
+          .select('id_ventanilla')
+          .eq('id_agencia', selectedAgency?.id_agencia || 1)
+          .eq('activa', true)
+          .limit(1);
 
-        if (!rpcErr && rpcCitaId) {
-          booked = true;
+        if (vList && vList.length > 0) {
+          ventanillaId = vList[0].id_ventanilla;
         }
-      } catch (rpcEx) {
-        console.warn('RPC reservar_cita no disponible, usando inserción directa:', rpcEx);
+      } catch (vErr) {
+        console.warn('Ventanilla fallback:', vErr);
       }
 
-      // 2. Si no se pudo usar el RPC, inserción directa con actualización de horario
-      if (!booked) {
-        const { error: insertErr } = await supabase.from('cita').insert({
-          codigo_cita: generatedTicketCode,
-          id_usuario: effectiveUserId,
-          id_horario: selectedSlotId,
-          id_tramite: effectiveTramiteId,
-          estado_cita: 'pendiente',
-          codigo_qr: generatedTicketCode,
-        });
+      // Extraer hora_inicio y hora_fin del bloque horario seleccionado
+      let horaInicio = '08:00:00';
+      let horaFin = '08:30:00';
+      const matchTimes = selectedTimeSlot.match(/(\d{1,2}):(\d{2})\s*(am|pm)\s*a\s*(\d{1,2}):(\d{2})\s*(am|pm)/i);
+      if (matchTimes) {
+        let h1 = parseInt(matchTimes[1], 10);
+        const m1 = matchTimes[2];
+        const p1 = matchTimes[3].toLowerCase();
+        let h2 = parseInt(matchTimes[4], 10);
+        const m2 = matchTimes[5];
+        const p2 = matchTimes[6].toLowerCase();
 
-        if (!insertErr) {
-          await supabase
-            .from('horario_disponible')
-            .update({ estado_horario: 'reservado' })
-            .eq('id_horario', selectedSlotId);
-        }
+        if (p1 === 'pm' && h1 < 12) h1 += 12;
+        if (p1 === 'am' && h1 === 12) h1 = 0;
+        if (p2 === 'pm' && h2 < 12) h2 += 12;
+        if (p2 === 'am' && h2 === 12) h2 = 0;
+
+        horaInicio = `${String(h1).padStart(2, '0')}:${m1}:00`;
+        horaFin = `${String(h2).padStart(2, '0')}:${m2}:00`;
+      }
+
+      // Inserción en la tabla cita con la nueva estructura
+      const { error: insertErr } = await supabase.from('cita').insert({
+        codigo_cita: generatedTicketCode,
+        id_usuario: effectiveUserId,
+        id_ventanilla: ventanillaId,
+        id_tramite: effectiveTramiteId,
+        fecha: selectedDate,
+        hora_inicio: horaInicio,
+        hora_fin: horaFin,
+        estado_cita: 'pendiente',
+        codigo_qr: generatedTicketCode,
+      });
+
+      if (insertErr) {
+        console.warn('Aviso inserción cita:', insertErr.message);
       }
 
       setConfirmedTicketCode(generatedTicketCode);

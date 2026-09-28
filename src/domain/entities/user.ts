@@ -35,4 +35,6 @@ export interface UserProfile {
   rol: UserRoleEnum | string;
   id_agencia?: number | null;
   agencia_nombre?: string | null;
+  contraseña?: string | null;
+  password_hash?: string | null;
 }

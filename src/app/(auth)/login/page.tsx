@@ -205,28 +205,28 @@ function LoginForm() {
           <div className="grid grid-cols-2 gap-1.5 text-[11px]">
             <button
               type="button"
-              onClick={() => handlePrefill('76929984', '123456')}
+              onClick={() => handlePrefill('76929984', '1234')}
               className="px-2 py-1 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 rounded font-semibold text-left border border-slate-200 transition truncate"
             >
               🔑 Admin Gen (76929984)
             </button>
             <button
               type="button"
-              onClick={() => handlePrefill('12345678', '123456')}
+              onClick={() => handlePrefill('12345678', '1234')}
               className="px-2 py-1 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 rounded font-semibold text-left border border-slate-200 transition truncate"
             >
               🔑 Agente Cusco (12345678)
             </button>
             <button
               type="button"
-              onClick={() => handlePrefill('87654321', '123456')}
+              onClick={() => handlePrefill('87654321', '1234')}
               className="px-2 py-1 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 rounded font-semibold text-left border border-slate-200 transition truncate"
             >
               🔑 Cliente (87654321)
             </button>
             <button
               type="button"
-              onClick={() => handlePrefill('76929984@continental.edu.pe', '123456')}
+              onClick={() => handlePrefill('76929984@continental.edu.pe', '1234')}
               className="px-2 py-1 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 rounded font-semibold text-left border border-slate-200 transition truncate"
             >
               🔑 Email Admin
